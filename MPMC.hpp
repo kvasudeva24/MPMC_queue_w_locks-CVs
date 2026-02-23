@@ -1,6 +1,6 @@
 #include <mutex>
 #include <condition_variable>
-
+#include <iostream>
 
 
 template <typename T>
@@ -23,6 +23,8 @@ public:
         data = new T[capacity];
     }
 
+    ~MPMC() { delete data; data = nullptr; }
+
     MPMC(const MPMC<T>& rhs) = delete;
     MPMC<T>& operator=(const MPMC<T>& rhs) = delete;
 
@@ -30,7 +32,7 @@ public:
 
 
     void put(T value) {
-        for ( size_t i{}; i < size; i++ ) {
+        for ( size_t i{}; i < capacity; i++ ) {
             std::unique_lock<std::mutex> lock(mtx);
             while ( size == capacity ) {
                 empty.wait(lock);
@@ -44,7 +46,7 @@ public:
     }
 
     void get() {
-        for ( size_t i{}; i < size; i++ ) {
+        for ( size_t i{}; i < capacity; i++ ) {
             std::unique_lock<std::mutex> lock(mtx);
             while ( size == 0 ) {
                 fill.wait(lock);
@@ -53,8 +55,8 @@ public:
             size--;
             take_ptr = ( take_ptr + 1 ) % capacity;
             empty.notify_one();
-            lock.unlock();1
             std::cout << "Value taken off of buffer: " << buffer_val << std::endl; //assumes that T has a << overload
+            lock.unlock();
         }
     }
 };
@@ -66,6 +68,6 @@ void producer(MPMC<T>& buffer, T value) {
 }
 
 template<typename T>
-void consumer(MPMC<T>& buffer, T value){
+void consumer(MPMC<T>& buffer){
     buffer.get();
 }
